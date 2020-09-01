@@ -1,10 +1,9 @@
 // PatchBin.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
 #include <stdio.h>
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
 	if (argc < 3) {
 		printf("Makes simple binary modification to a file\n");
