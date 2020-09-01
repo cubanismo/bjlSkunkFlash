@@ -2,20 +2,28 @@
 // Flashes a skunkboard, filling in the serial number, using the local skunkbios.cof file.
 // Patches with the serial number, then invokes BJL (make sure it's in the path).
 
-#include "stdafx.h"
-#include <windows.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-char szBJL[] = "bjlxp.exe";
+char szBJL[] = "lo_inp";
 char szArgs[]= "tmp.cof";
 
 unsigned char bios[32*1024];
 char buf[128];
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
 	char *pEXE=szBJL;
 	char *pARG=szArgs;
-	char *pBIOS="skunkbios.cof";
+	const char *pBIOS="skunkbios.cof";
+	pid_t child;
+	int child_status;
 
 	if (argc > 1) {
 		pBIOS=argv[1];
@@ -62,7 +70,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 lp:
 	printf("Enter serial number for board in decimal format, 4 digits max (will save as hex): ");
-	gets(buf);
+	fgets(buf, sizeof(buf), stdin);
 	int serial;
 	if (1 != sscanf(buf, "%x", &serial)) {
 		printf("\nCan't read number!\n");
@@ -90,13 +98,27 @@ lp:
 	printf("Writing serial number %04X to board, using command:\n", serial);
 	printf("> %s %s\n", pEXE, pARG);
 
-	int nRet=(int)ShellExecute(NULL, "open", pEXE, pARG, NULL, SW_SHOW);
-	if (nRet < 32) {
-		printf("Failed to shell, code %d\n", nRet);
+  	if ((child = fork())) {
+		if (wait(&child_status) != child) {
+			printf("Failed to wait for child, code %d (%s)\n",
+			       errno, strerror(errno));
+			exit(1);
+		}
 	} else {
-		printf("Done, wait for BJL to exit.\n");
+		int nRet=(int)execlp(pEXE, pEXE, pARG, NULL);
+		if (nRet) {
+			printf("Failed to run BJL, code %d (%s)\n",
+			       errno, strerror(errno));
+			exit(1);
+		}
 	}
 
-	return 0;
+	if (!WEXITSTATUS(child_status)) {
+		printf("Done flashing board!\n");
+		return 0;
+	} else {
+		printf("Error: Child process failed, exit code %d\n", WEXITSTATUS(child_status));
+		return WEXITSTATUS(child);
+	}
 }
 
