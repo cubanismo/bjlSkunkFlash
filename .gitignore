@@ -3,7 +3,10 @@ bjlSkunkFlash
 patchbin
 mkuniv
 tmp.cof
-temp.bin
+test.bin
+test.e2p
 bios.bin
 doom.jag
 avp.jag
+badapple.rom
+e2p.log
